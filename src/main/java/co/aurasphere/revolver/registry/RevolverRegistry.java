@@ -165,4 +165,5 @@ public class RevolverRegistry {
 	public List<MethodInfo> getManagedMethods() {
 		return this.managedMethods;
 	}
+	
 }

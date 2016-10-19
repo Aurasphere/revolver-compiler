@@ -22,8 +22,11 @@ public enum ErrorMessageBundle {
 	REQUIRED_COMPONENT_NOT_FOUND_E("Required component [{}] for class [{}] not found under Revolver context. Are you missing an annotation?"), 
 	REQUIRED_COMPONENT_TYPE_MISMATCH_E("Mismatching type for component [{}] in class [{}]: expected [{}] but got [{}] from class [{}]."),
 	INVALID_RETURN_TYPE_VOID_E("Generator method [{}] in class [{}] can't return void!"), 
+	INVALID_GENERATOR_METHOD_NOT_PUBLIC_E("Generator method [{}] in class [{}] must be public."),
 	
-	WRITING_CLASS_EX("Exception during Revolver class generation.");
+	WRITING_CLASS_EX("Exception during Revolver class generation."), 
+	
+	CIRCULAR_DEPENDENCY_E("Circular dependency found between class [{}] and class [{}].");
 
 	private String value;
 

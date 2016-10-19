@@ -1,7 +1,5 @@
 package co.aurasphere.revolver.environment;
 
-import java.io.IOException;
-
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.tools.Diagnostic.Kind;
 
@@ -12,12 +10,17 @@ public class Messenger {
 	Messenger(ProcessingEnvironment processingEnv) {
 		this.processingEnv = processingEnv;
 	}
+	
+	private String replaceArguments(String message, Object[] args){
+		String resultMessage = message;
+		for (Object arg : args) {
+			resultMessage = resultMessage.replaceFirst("\\{\\}", arg.toString());
+		}
+		return resultMessage;
+	}
 
 	public void error(ErrorMessageBundle messageBundle, Object... args) {
-		String message = messageBundle.getValue();
-		for (Object arg : args) {
-			message = message.replaceFirst("\\{\\}", arg.toString());
-		}
+		String message = replaceArguments(messageBundle.getValue(), args);
 		processingEnv.getMessager().printMessage(Kind.ERROR, "Revolver compilation error: " + message);
 	}
 
@@ -25,13 +28,22 @@ public class Messenger {
 	 * Logs an exception interrupting the compilation.
 	 * 
 	 * @param message
-	 *            the error messaage.
+	 *            the error message.
 	 * @param exception
 	 *            the exception to log.
 	 */
 	public void exception(ErrorMessageBundle message, Exception exception) {
 		processingEnv.getMessager().printMessage(Kind.ERROR,
-				message + "Nested exception is: " + exception.getMessage());
+				message.getValue() + " Nested exception is: " + exception.getMessage());
+	}
+
+	public void note(String message) {
+		processingEnv.getMessager().printMessage(Kind.NOTE, message);
+	}
+
+	public void warning(ErrorMessageBundle messageBundle, Object... args) {
+		String message = replaceArguments(messageBundle.getValue(), args);
+		processingEnv.getMessager().printMessage(Kind.WARNING, "Revolver compilation warning: " + message);
 	}
 
 }

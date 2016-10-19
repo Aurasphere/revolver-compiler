@@ -4,6 +4,8 @@ import java.util.Set;
 
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.annotation.processing.SupportedSourceVersion;
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 
@@ -25,9 +27,11 @@ import co.aurasphere.revolver.codegen.CodegenController;
 /**
  * Generates RevolverComponentProvider.java.
  * 
- * @author Donato
+ * @author Donato Rimenti
  * @date 15/ago/2016
  */
+
+@SupportedSourceVersion(SourceVersion.RELEASE_6)
 @SupportedAnnotationTypes(value = {
 		"co.aurasphere.revolver.annotation.RevolverContext",
 		"co.aurasphere.revolver.annotation.Controller",
@@ -58,6 +62,7 @@ public class ComponentProviderProcessor extends BaseProcessor {
 	public boolean process(Set<? extends TypeElement> annotations,
 			RoundEnvironment roundEnv) {
 		environment.register(processingEnv, ComponentProviderProcessor.class);
+		messenger().note("Starting Revolver Component Provider generation");
 
 		@SuppressWarnings("unchecked")
 		Set<Element> contextComponents = (Set<Element>) roundEnv

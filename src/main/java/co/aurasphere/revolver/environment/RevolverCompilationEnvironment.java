@@ -5,9 +5,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+
+import co.aurasphere.revolver.annotation.processor.ComponentProviderProcessor;
+import co.aurasphere.revolver.annotation.processor.InjectorProcessor;
+import co.aurasphere.revolver.codegen.CodegenController;
 
 public class RevolverCompilationEnvironment {
 
@@ -20,6 +25,10 @@ public class RevolverCompilationEnvironment {
 	private Types typeUtils;
 
 	private CollectionElementUtils collectionElementUtils;
+
+	private boolean componentProviderProcessed;
+
+	private boolean injectorProcessed;
 
 	private static RevolverCompilationEnvironment instance;
 
@@ -54,12 +63,8 @@ public class RevolverCompilationEnvironment {
 	}
 
 	public Messenger getMessenger() {
-		for (ProcessingEnvironment env : processingEnvironments) {
-			if (env != null) {
-				return new Messenger(env);
-			}
-		}
-		return null;
+		ProcessingEnvironment env = processingEnvironments.get(0);
+		return new Messenger(env);
 	}
 
 	public Elements getElementUtils() {
@@ -83,10 +88,31 @@ public class RevolverCompilationEnvironment {
 	 * must be done before component provider.
 	 */
 	public void terminate(Class<?> klass) {
+		
+		if(klass.equals(InjectorProcessor.class)){
+			this.injectorProcessed = true;
+		}
+		
+		if(klass.equals(ComponentProviderProcessor.class)){
+			this.componentProviderProcessed = true;
+		}
+		
 		registeredProcessors.remove(klass);
 		if (registeredProcessors.isEmpty()) {
 			InjectorValidator.validate();
 			ComponentProviderValidator.validate();
+			CircularDependenciesValidator.validate();
+
+			// If one of the two classes has not been generated (because no
+			// annotation managed are processed) I generate it manually.
+			Filer filer = processingEnvironments.get(0).getFiler();
+			if(!componentProviderProcessed){
+				CodegenController.generateComponentProvider(filer);
+			}
+			if(!injectorProcessed){
+				CodegenController.generateInjector(filer);
+			}
+
 		}
 	}
 

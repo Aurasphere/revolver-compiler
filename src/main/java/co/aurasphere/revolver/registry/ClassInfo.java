@@ -3,10 +3,13 @@ package co.aurasphere.revolver.registry;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.ElementFilter;
 
 import co.aurasphere.revolver.annotation.Generator;
 
@@ -18,13 +21,22 @@ public class ClassInfo extends RevolverRegistryEntry {
 
 	private boolean generator;
 
+	private ExecutableElement constructor;
+
 	private List<FieldInfo> constructorParams;
+
+	private List<ClassInfo> fieldsToInject;
 
 	public ClassInfo(TypeElement typeElement, ExecutableElement constructor) {
 		this(typeElement);
-		constructorParams = new ArrayList<FieldInfo>();
+		this.constructor = constructor;
+		this.constructorParams = new ArrayList<FieldInfo>();
 		for (VariableElement e : constructor.getParameters()) {
-			constructorParams.add(new FieldInfo(e, typeElement));
+			this.constructorParams.add(new FieldInfo(e, typeElement));
+			// Adds the constructor params to the fields to inject for latter
+			// validation (circular dependencies).
+			this.fieldsToInject.add(new ClassInfo(
+					variableElementToTypeElement(e)));
 		}
 	}
 
@@ -92,5 +104,40 @@ public class ClassInfo extends RevolverRegistryEntry {
 			return false;
 		return true;
 	}
-	
+
+	/**
+	 * Lazily initialized to prevent circular dependencies.
+	 * 
+	 * @return
+	 */
+	public List<ClassInfo> getFieldsToInject() {
+		if (this.fieldsToInject == null) {
+			this.fieldsToInject = new ArrayList<ClassInfo>();
+			if (typeElement != null) {
+				List<? extends Element> members = typeElement
+						.getEnclosedElements();
+				List<VariableElement> fields = ElementFilter.fieldsIn(members);
+
+				// Adds the constructor params to the fields to inject for
+				// latter
+				// validation (circular dependencies).
+				if (this.constructor != null) {
+					for (VariableElement e : this.constructor.getParameters()) {
+						this.fieldsToInject.add(new ClassInfo(
+								variableElementToTypeElement(e)));
+					}
+				}
+				// Adds the field to inject for latter validation (circular
+				// dependencies).
+				for (VariableElement f : fields) {
+					if (f.getAnnotation(Inject.class) != null) {
+						this.fieldsToInject.add(new ClassInfo(
+								variableElementToTypeElement(f)));
+					}
+				}
+			}
+		}
+		return this.fieldsToInject;
+	}
+
 }

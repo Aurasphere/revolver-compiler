@@ -4,11 +4,14 @@ import java.lang.annotation.Annotation;
 
 import javax.inject.Named;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
+import co.aurasphere.revolver.environment.RevolverBaseBean;
 import co.aurasphere.revolver.utils.StringUtils;
 
-public abstract class RevolverRegistryEntry {
+public abstract class RevolverRegistryEntry extends RevolverBaseBean{
 
 	protected String name;
 
@@ -22,10 +25,13 @@ public abstract class RevolverRegistryEntry {
 		this.named = isAnnotatedWith(element, Named.class);
 		this.name = getElementName(element);
 		this.element = element;
-		this.typeMirror = element.asType();
+		this.typeMirror = element == null? null : element.asType();
 	}
 
 	protected String getElementName(Element e) {
+		if(e == null){
+			return "";
+		}
 		// If a named annotation is not found, then the getter will look for
 		// the class name.
 		Named named = e.getAnnotation(Named.class);
@@ -46,7 +52,7 @@ public abstract class RevolverRegistryEntry {
 
 	protected boolean isAnnotatedWith(Element element,
 			Class<? extends Annotation> annotation) {
-		return element.getAnnotation(annotation) != null;
+		return element != null && element.getAnnotation(annotation) != null;
 	}
 
 	public String getName() {
@@ -69,6 +75,10 @@ public abstract class RevolverRegistryEntry {
 
 	public TypeMirror getTypeMirror() {
 		return typeMirror;
+	}
+	
+	protected TypeElement variableElementToTypeElement(VariableElement element){
+		return (TypeElement) environment.getTypeUtils().asElement(element.asType());
 	}
 
 }

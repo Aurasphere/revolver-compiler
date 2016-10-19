@@ -24,7 +24,6 @@ import co.aurasphere.revolver.registry.RevolverRegistryEntry;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.MethodSpec.Builder;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
@@ -36,28 +35,6 @@ public class RevolverComponentProviderCodegen extends BaseCodegen {
 	private RevolverComponentProviderCodegen() {
 		this.classBuilder = TypeSpec.classBuilder(PROVIDER_CLASS_NAME)
 				.addModifiers(PUBLIC);
-
-		// Adds field and members to manage this component as a Singleton.
-		// Creates a private constructor.
-		// MethodSpec constructor = MethodSpec.constructorBuilder()
-		// .addModifiers(PRIVATE).build();
-		// classBuilder.addMethod(constructor);
-
-		// Creates a getInstance method
-		// TypeName generatedClass = ClassName.get(GENERATED_CLASS_PACKAGE,
-		// PROVIDER_CLASS_NAME);
-		// MethodSpec getInstance = MethodSpec
-		// .methodBuilder("getInstance")
-		// .addModifiers(STATIC)
-		// .returns(generatedClass)
-		// .beginControlFlow("if ($L == null)", LOCAL_INSTANCE_NAME)
-		// .addStatement("$L = new $L()", LOCAL_INSTANCE_NAME,
-		// generatedClass).endControlFlow()
-		// .addStatement("return $L", LOCAL_INSTANCE_NAME).build();
-		// classBuilder.addMethod(getInstance);
-
-		// Generates the singleton instance field.
-
 	}
 
 	public static RevolverComponentProviderCodegen getInstance() {
@@ -90,8 +67,7 @@ public class RevolverComponentProviderCodegen extends BaseCodegen {
 		// Creates the singleton and injects it.
 		builder.addStatement("$L = new $T($L)", singletonName, singletonClass,
 				getArgString(argNum))
-				.addStatement("$L.$L($L)",
-						CodegenConstants.INJECTOR_CLASS_NAME,
+				.addStatement("$T.$L($L)", CodegenConstants.INJECTOR_TYPE,
 						CodegenConstants.INJECT_METHOD_NAME, singletonName)
 				.endControlFlow().addStatement("return $L", singletonName);
 
@@ -118,8 +94,7 @@ public class RevolverComponentProviderCodegen extends BaseCodegen {
 		builder.addStatement("$T $L = new $T($L)", klass.getType(),
 				CodegenConstants.RETURN_OBJECT_NAME, klass.getType(),
 				getArgString(argNum))
-				.addStatement("$L.$L($L)",
-						CodegenConstants.INJECTOR_CLASS_NAME,
+				.addStatement("$T.$L($L)", CodegenConstants.INJECTOR_TYPE,
 						CodegenConstants.INJECT_METHOD_NAME,
 						CodegenConstants.RETURN_OBJECT_NAME)
 				.addStatement("return $L", CodegenConstants.RETURN_OBJECT_NAME);
@@ -177,26 +152,13 @@ public class RevolverComponentProviderCodegen extends BaseCodegen {
 
 		MethodSpec.Builder builder = getMethodBuilder(field);
 
-		// Adds the return statement with the constant. TODO: questo va bene per
-		// le stringhe ma se fosse un int?
+		// Adds the return statement with the constant.
 		Object value = field.getType().getConstantValue();
-		if(field.isString()){
+		if (field.isString()) {
 			builder.addStatement("return $S", value);
-		}
-		else if(field.isPrimitive()){
+		} else if (field.isPrimitive()) {
 			builder.addStatement("return $L", value);
 		}
-		
-		// Adds this method to the class.
-		classBuilder.addMethod(builder.build());
-	}
-
-	public void addGeneratorProviderMethod(FieldInfo field) {
-
-		MethodSpec.Builder builder = getMethodBuilder(field);
-
-		// Adds the return statement with the constant.
-		builder.addStatement("return $L.$L", field.getType().getConstantValue());
 
 		// Adds this method to the class.
 		classBuilder.addMethod(builder.build());
@@ -225,6 +187,7 @@ public class RevolverComponentProviderCodegen extends BaseCodegen {
 
 		MethodSpec.Builder builder = getMethodBuilder(field);
 
+		// TODO: should this class be a type?
 		int counter = 0;
 		for (RevolverRegistryEntry entry : validEntries) {
 			builder.addStatement("$L arg$L = $L()", collectionElementType,
@@ -273,17 +236,19 @@ public class RevolverComponentProviderCodegen extends BaseCodegen {
 
 				TypeName genericCollection = ParameterizedTypeName.get(
 						collectionClass, generic);
-				builder.addStatement("$T returnObject = new $T()",
-						genericCollection, genericCollection);
+				builder.addStatement("$T $L = new $T()", genericCollection,
+						CodegenConstants.RETURN_OBJECT_NAME, genericCollection);
 			} else {
-				builder.addStatement("$T returnObject = new $T()",
-						collectionClass, collectionClass);
+				builder.addStatement("$T $L = new $T()", collectionClass,
+						CodegenConstants.RETURN_OBJECT_NAME, collectionClass);
 			}
 
 			for (int i = 0; i < counter; i++) {
-				builder.addStatement("returnObject.add(arg$L)", i);
+				builder.addStatement("$L.add(arg$L)",
+						CodegenConstants.RETURN_OBJECT_NAME, i);
 			}
-			builder.addStatement("return returnObject");
+			builder.addStatement("return $L",
+					CodegenConstants.RETURN_OBJECT_NAME);
 		}
 		classBuilder.addMethod(builder.build());
 	}
@@ -303,6 +268,17 @@ public class RevolverComponentProviderCodegen extends BaseCodegen {
 				.methodBuilder(m.getterMethodName()).returns(providedClass)
 				.addModifiers(Modifier.STATIC);
 
+		// If the generator method is a singleton, creates a static field for
+		// keeping the instance and generates it.
+		String singletonInstanceName = m.getName() + "_instance";
+		if (m.isSingleton()) {
+			// TODO: names must be unique.
+			FieldSpec singletonInstanceField = getSingletonInstanceField(
+					providedClass, singletonInstanceName);
+			classBuilder.addField(singletonInstanceField);
+			builder.beginControlFlow("if ($L == null )", singletonInstanceName);
+		}
+
 		// Injects the arguments.
 		int argCounter = 0;
 		for (FieldInfo f : m.getParametersFieldInfo()) {
@@ -310,11 +286,18 @@ public class RevolverComponentProviderCodegen extends BaseCodegen {
 					f.getterMethodName());
 		}
 
-		// Returns the result of the generator method.
-		// TODO: at the moment generator methods must be static.
-		builder.addStatement("return $T.$L($L)", m.getParentClass(),
-				m.getMethodName(), getArgString(argCounter));
+		if (m.isSingleton()) {
+			builder.addStatement("$L = $T.$L($L)", singletonInstanceName,
+					m.getParentClass(), m.getMethodName(),
+					getArgString(argCounter)).endControlFlow()
+					.addStatement("return $L", singletonInstanceName);
 
+		} else {
+			// Returns the result of the generator method.
+			// TODO: at the moment generator methods must be static. for validation methods must be public
+			builder.addStatement("return $T.$L($L)", m.getParentClass(),
+					m.getMethodName(), getArgString(argCounter));
+		}
 		this.classBuilder.addMethod(builder.build());
 
 	}

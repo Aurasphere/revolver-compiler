@@ -4,7 +4,9 @@ import java.util.Set;
 
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.annotation.processing.SupportedSourceVersion;
 import javax.inject.Inject;
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -20,9 +22,11 @@ import co.aurasphere.revolver.registry.FieldInfo;
 /**
  * Generates Revolver.java.
  * 
- * @author Donato
+ * @author Donato Rimenti
  * @date 15/ago/2016
  */
+
+@SupportedSourceVersion(SourceVersion.RELEASE_6)
 @SupportedAnnotationTypes(value = { "javax.inject.Inject" })
 public class InjectorProcessor extends BaseProcessor {
 
@@ -30,6 +34,7 @@ public class InjectorProcessor extends BaseProcessor {
 	public boolean process(Set<? extends TypeElement> annotations,
 			RoundEnvironment roundEnv) {
 		environment.register(processingEnv, InjectorProcessor.class);
+		messenger().note("Starting Revolver Injector generation");
 
 		for (Element e : roundEnv.getElementsAnnotatedWith(Inject.class)) {
 			String className = e.getEnclosingElement().toString();

@@ -54,10 +54,10 @@ public class RevolverInjectorCodegen extends BaseCodegen {
 			// TODO: e se è una collection di array o un array di collection?
 
 			// Gets the argument.
-			fieldClass = ClassName.get(i.getType().asType());
-			builder.addStatement("$L arg$L = $L.$L()",
+			fieldClass = ClassName.get(i.getTypeMirror());
+			builder.addStatement("$T arg$L = $T.$L()",
 					fieldClass, argCounter,
-					CodegenConstants.PROVIDER_CLASS_NAME, i.getterMethodName());
+					CodegenConstants.PROVIDER_TYPE, i.getterMethodName());
 			// TODO: PROVIDER_CLASS should be a class not a String.
 
 			// Sets the argument.

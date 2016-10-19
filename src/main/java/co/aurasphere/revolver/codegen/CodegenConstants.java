@@ -1,5 +1,7 @@
 package co.aurasphere.revolver.codegen;
 
+import com.squareup.javapoet.ClassName;
+
 public class CodegenConstants {
 	
 	static final String INJECT_METHOD_NAME = "inject";
@@ -15,5 +17,8 @@ public class CodegenConstants {
 	static final String RETURN_OBJECT_NAME = "returnObject";
 	
 	static final String LOCAL_PROVIDER_NAME = "componentProvider";
+	
+	static final ClassName INJECTOR_TYPE = ClassName.get(GENERATED_CLASS_PACKAGE, INJECTOR_CLASS_NAME);
 
+	static final ClassName PROVIDER_TYPE = ClassName.get(GENERATED_CLASS_PACKAGE, PROVIDER_CLASS_NAME);
 }

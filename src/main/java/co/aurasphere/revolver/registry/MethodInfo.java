@@ -90,4 +90,8 @@ public class MethodInfo extends RevolverRegistryEntry {
 		return this.methodName;
 	}
 
+	public boolean isSingleton() {
+		return singleton;
+	}
+
 }
