@@ -28,9 +28,7 @@ import co.aurasphere.revolver.codegen.CodegenController;
  * Generates RevolverComponentProvider.java.
  * 
  * @author Donato Rimenti
- * @date 15/ago/2016
  */
-
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 @SupportedAnnotationTypes(value = {
 		"co.aurasphere.revolver.annotation.RevolverContext",

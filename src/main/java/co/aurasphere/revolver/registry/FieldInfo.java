@@ -87,7 +87,7 @@ public class FieldInfo extends RevolverRegistryEntry {
 
 	public String setterName() {
 		return "set"
-				+ StringUtils.firstCharUppercase(this.variableElement
+				+ StringUtils.capitalize(this.variableElement
 						.toString());
 	}
 

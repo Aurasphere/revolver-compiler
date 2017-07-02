@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 
 import javax.annotation.processing.Filer;
+import javax.tools.JavaFileObject;
 
 import co.aurasphere.revolver.environment.ErrorMessageBundle;
 import co.aurasphere.revolver.environment.RevolverBaseBean;

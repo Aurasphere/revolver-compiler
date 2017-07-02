@@ -60,7 +60,7 @@ public abstract class RevolverRegistryEntry extends RevolverBaseBean{
 	}
 
 	public String getterMethodName() {
-		return "get" + StringUtils.firstCharUppercase(name);
+		return "get" + StringUtils.capitalize(name);
 	}
 
 	public boolean isNamed() {
