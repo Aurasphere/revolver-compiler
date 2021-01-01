@@ -1,7 +1,7 @@
-package co.aurasphere.revolver.registry;
+package co.aurasphere.revolver.model;
 
 public enum CollectionType {
-	SIMPLE, ARRAY, SET, LIST, 
+	SINGLE, ARRAY, SET, LIST, 
 	
 	// Future implementation
 	QUEUE;

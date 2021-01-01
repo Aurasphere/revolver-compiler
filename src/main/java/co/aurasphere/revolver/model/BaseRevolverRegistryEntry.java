@@ -1,4 +1,4 @@
-package co.aurasphere.revolver.registry;
+package co.aurasphere.revolver.model;
 
 import java.lang.annotation.Annotation;
 
@@ -8,10 +8,11 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
-import co.aurasphere.revolver.environment.RevolverBaseBean;
-import co.aurasphere.revolver.utils.StringUtils;
+import org.apache.commons.lang.StringUtils;
 
-public abstract class RevolverRegistryEntry extends RevolverBaseBean{
+import co.aurasphere.revolver.RevolverCompilationEnvironment;
+
+public abstract class BaseRevolverRegistryEntry {
 
 	protected String name;
 
@@ -20,20 +21,17 @@ public abstract class RevolverRegistryEntry extends RevolverBaseBean{
 	protected Element element;
 
 	protected TypeMirror typeMirror;
-	
-	public RevolverRegistryEntry(Element element) {
+
+	public BaseRevolverRegistryEntry(Element element) {
 		this.named = isAnnotatedWith(element, Named.class);
-		this.name = getElementName(element);
 		this.element = element;
-		this.typeMirror = element == null? null : element.asType();
+		this.name = element == null ? null : getElementName(element);
+		this.typeMirror = element == null ? null : element.asType();
 	}
 
-	protected String getElementName(Element e) {
-		if(e == null){
-			return "";
-		}
-		// If a named annotation is not found, then the getter will look for
-		// the class name.
+	private String getElementName(Element e) {
+		// If a named annotation is not found, then the component provider getter will
+		// be for the class name.
 		Named named = e.getAnnotation(Named.class);
 		if (named == null) {
 			return e.asType().toString().replaceAll("[\\.<>\\[\\]\\(\\)]", "_");
@@ -50,8 +48,7 @@ public abstract class RevolverRegistryEntry extends RevolverBaseBean{
 		}
 	}
 
-	protected boolean isAnnotatedWith(Element element,
-			Class<? extends Annotation> annotation) {
+	protected boolean isAnnotatedWith(Element element, Class<? extends Annotation> annotation) {
 		return element != null && element.getAnnotation(annotation) != null;
 	}
 
@@ -76,9 +73,9 @@ public abstract class RevolverRegistryEntry extends RevolverBaseBean{
 	public TypeMirror getTypeMirror() {
 		return typeMirror;
 	}
-	
-	protected TypeElement variableElementToTypeElement(VariableElement element){
-		return (TypeElement) environment.getTypeUtils().asElement(element.asType());
+
+	protected TypeElement variableElementToTypeElement(VariableElement element) {
+		return (TypeElement) RevolverCompilationEnvironment.INSTANCE.getTypeUtils().asElement(element.asType());
 	}
 
 }

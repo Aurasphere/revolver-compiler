@@ -1,4 +1,4 @@
-package co.aurasphere.revolver.registry;
+package co.aurasphere.revolver.model;
 
 import java.util.List;
 
@@ -9,47 +9,25 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import co.aurasphere.revolver.utils.StringUtils;
+import org.apache.commons.lang.StringUtils;
 
-public class FieldInfo extends RevolverRegistryEntry {
+public class FieldRegistryEntry extends BaseRevolverRegistryEntry {
 
 	private TypeElement parentClass;
 
 	private VariableElement variableElement;
 
-	private boolean publicAttr;
-
-	private boolean string;
-
-	private boolean primitive;
-
 	private CollectionType collectionType;
 
 	private TypeMirror collectionElementTypeMirror;
 
-	public FieldInfo(VariableElement variableElement, TypeElement parentClass) {
+	public FieldRegistryEntry(VariableElement variableElement, TypeElement parentClass) {
 		super(variableElement);
 		this.variableElement = variableElement;
 		this.parentClass = parentClass;
-		this.publicAttr = variableElement.getModifiers().contains(
-				Modifier.PUBLIC);
+		this.collectionType = CollectionType.SINGLE;
 
-		// If the field is primitive or a String I treat it as
-		// it was annotated with @Named (if it isnt't already).
-		if (!this.named) {
-			if ("java.lang.String".equals(this.typeMirror.toString())) {
-				this.name = this.variableElement.getSimpleName().toString();
-				this.string = true;
-			} else if (this.typeMirror.getKind().isPrimitive()) {
-				this.name = this.variableElement.getSimpleName().toString();
-				this.primitive = true;
-			}
-		}
-
-		this.collectionType = CollectionType.SIMPLE;
-		this.typeMirror = this.variableElement.asType();
-
-		// Sets the element type mirror if this is a collection on an array.
+		// Sets the element type mirror if this is a collection or an array.
 		if (this.typeMirror instanceof ArrayType) {
 			this.collectionElementTypeMirror = ((ArrayType) this.typeMirror)
 					.getComponentType();
@@ -60,16 +38,10 @@ public class FieldInfo extends RevolverRegistryEntry {
 				this.collectionElementTypeMirror = typeArguments.get(0);
 			}
 		}
-
 	}
 
-	public FieldInfo(VariableElement e) {
+	public FieldRegistryEntry(VariableElement e) {
 		this(e, (TypeElement) e.getEnclosingElement());
-	}
-
-	public FieldInfo(VariableElement e, CollectionType collectionType) {
-		this(e);
-		this.collectionType = collectionType;
 	}
 
 	public TypeElement getParentClass() {
@@ -81,18 +53,15 @@ public class FieldInfo extends RevolverRegistryEntry {
 		return this.variableElement;
 	}
 
-	public boolean isPublicAttr() {
-		return this.publicAttr;
+	public boolean isPublic() {
+		return variableElement.getModifiers().contains(
+				Modifier.PUBLIC);
 	}
 
 	public String setterName() {
 		return "set"
 				+ StringUtils.capitalize(this.variableElement
 						.toString());
-	}
-
-	public ClassInfo getParentClassInfo() {
-		return new ClassInfo(this.parentClass);
 	}
 
 	public String qualifiedName() {
@@ -104,24 +73,47 @@ public class FieldInfo extends RevolverRegistryEntry {
 				+ variableElement.asType().toString() + ")";
 	}
 
+	public TypeMirror getCollectionElementTypeMirror() {
+		return this.collectionElementTypeMirror;
+	}
+
 	public CollectionType getCollectionType() {
-		return this.collectionType;
+		return collectionType;
 	}
 
 	public void setCollectionType(CollectionType collectionType) {
 		this.collectionType = collectionType;
 	}
 
-	public TypeMirror getCollectionElementTypeMirror() {
-		return this.collectionElementTypeMirror;
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((collectionElementTypeMirror == null) ? 0 : collectionElementTypeMirror.hashCode());
+		result = prime * result + ((variableElement == null) ? 0 : variableElement.hashCode());
+		return result;
 	}
 
-	public boolean isString() {
-		return string;
-	}
-
-	public boolean isPrimitive() {
-		return primitive;
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		FieldRegistryEntry other = (FieldRegistryEntry) obj;
+		if (collectionElementTypeMirror == null) {
+			if (other.collectionElementTypeMirror != null)
+				return false;
+		} else if (!collectionElementTypeMirror.equals(other.collectionElementTypeMirror))
+			return false;
+		if (variableElement == null) {
+			if (other.variableElement != null)
+				return false;
+		} else if (!variableElement.equals(other.variableElement))
+			return false;
+		return true;
 	}
 
 }

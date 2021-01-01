@@ -1,102 +1,107 @@
 package co.aurasphere.revolver.annotation.processor;
 
+import java.util.List;
 import java.util.Set;
 
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.util.ElementFilter;
+import javax.lang.model.util.Types;
+import javax.tools.Diagnostic.Kind;
 
+import co.aurasphere.revolver.RevolverCompilationEnvironment;
 import co.aurasphere.revolver.annotation.Component;
-import co.aurasphere.revolver.annotation.Constant;
-import co.aurasphere.revolver.annotation.Controller;
-import co.aurasphere.revolver.annotation.Generator;
-import co.aurasphere.revolver.annotation.Model;
-import co.aurasphere.revolver.annotation.Repository;
-import co.aurasphere.revolver.annotation.RevolverContext;
-import co.aurasphere.revolver.annotation.Service;
-import co.aurasphere.revolver.annotation.Utility;
-import co.aurasphere.revolver.annotation.View;
-import co.aurasphere.revolver.annotation.processor.internal.RevolverConstantAnnotationProcessorInternal;
-import co.aurasphere.revolver.annotation.processor.internal.RevolverContextAnnotationProcessorInternal;
-import co.aurasphere.revolver.annotation.processor.internal.RevolverGeneratorAnnotationProcessorInternal;
-import co.aurasphere.revolver.codegen.CodegenController;
+import co.aurasphere.revolver.annotation.DefaultConstructor;
 
 /**
  * Generates RevolverComponentProvider.java.
  * 
  * @author Donato Rimenti
  */
+@SuppressWarnings("restriction")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
-@SupportedAnnotationTypes(value = {
-		"co.aurasphere.revolver.annotation.RevolverContext",
-		"co.aurasphere.revolver.annotation.Controller",
-		"co.aurasphere.revolver.annotation.Service",
-		"co.aurasphere.revolver.annotation.View",
-		"co.aurasphere.revolver.annotation.Repository",
-		"co.aurasphere.revolver.annotation.Utility",
-		"co.aurasphere.revolver.annotation.Component",
-		"co.aurasphere.revolver.annotation.Model",
+@SupportedAnnotationTypes("co.aurasphere.revolver.annotation.Component")
+public class ComponentProviderProcessor extends AbstractProcessor {
 
-		"co.aurasphere.revolver.annotation.Constant",
-		"co.aurasphere.revolver.annotation.Generator" })
-public class ComponentProviderProcessor extends BaseProcessor {
-
-	private RevolverContextAnnotationProcessorInternal contextAnnotationProcessor;
-
-	private RevolverGeneratorAnnotationProcessorInternal generatorAnnotationProcessor;
-
-	private RevolverConstantAnnotationProcessorInternal constantAnnotationProcessor;
-
-	public ComponentProviderProcessor() {
-		contextAnnotationProcessor = new RevolverContextAnnotationProcessorInternal();
-		generatorAnnotationProcessor = new RevolverGeneratorAnnotationProcessorInternal();
-		constantAnnotationProcessor = new RevolverConstantAnnotationProcessorInternal();
-	}
+	private boolean firstRound = true;
 
 	@Override
-	public boolean process(Set<? extends TypeElement> annotations,
-			RoundEnvironment roundEnv) {
-		environment.register(processingEnv, ComponentProviderProcessor.class);
-		messenger().note("Starting Revolver Component Provider generation");
+	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 
-		@SuppressWarnings("unchecked")
-		Set<Element> contextComponents = (Set<Element>) roundEnv
-				.getElementsAnnotatedWith(RevolverContext.class);
-
-		// Adds the components under the context before processing them.
-		contextComponents.addAll(roundEnv
-				.getElementsAnnotatedWith(Controller.class));
-		contextComponents.addAll(roundEnv
-				.getElementsAnnotatedWith(Service.class));
-		contextComponents.addAll(roundEnv.getElementsAnnotatedWith(View.class));
-		contextComponents.addAll(roundEnv
-				.getElementsAnnotatedWith(Repository.class));
-		contextComponents.addAll(roundEnv
-				.getElementsAnnotatedWith(Component.class));
-		contextComponents.addAll(roundEnv
-				.getElementsAnnotatedWith(Utility.class));
-		contextComponents
-				.addAll(roundEnv.getElementsAnnotatedWith(Model.class));
-
-		contextAnnotationProcessor.processInternal(contextComponents);
-		generatorAnnotationProcessor.processInternal(roundEnv
-				.getElementsAnnotatedWith(Generator.class));
-		constantAnnotationProcessor.processInternal(roundEnv
-				.getElementsAnnotatedWith(Constant.class));
-
-		// Performs validation.
-		if (roundEnv.processingOver()) {
-			environment.terminate(ComponentProviderProcessor.class);
-			CodegenController.generateComponentProvider(processingEnv
-					.getFiler());
+		if (firstRound) {
+			RevolverCompilationEnvironment.INSTANCE.register(processingEnv, ComponentProviderProcessor.class);
+			firstRound = false;
 		}
 
-		// No more processing for this annotation.
-		environment.terminateRound(processingEnv);
+		RevolverCompilationEnvironment.INSTANCE.printMessage(Kind.NOTE,
+				"Starting Revolver Component Provider generation");
+		processAnnotations(roundEnv.getElementsAnnotatedWith(Component.class), processingEnv);
+
+		// Terminates the single round or all the processing.
+		if (roundEnv.processingOver()) {
+			RevolverCompilationEnvironment.INSTANCE.terminate(ComponentProviderProcessor.class, processingEnv);
+			// No more processing for this annotation.
+			RevolverCompilationEnvironment.INSTANCE.terminateRound(processingEnv);
+		}
+
 		return true;
+	}
+
+	public void processAnnotations(Set<? extends Element> elements, ProcessingEnvironment processingEnv) {
+		for (Element e : elements) {
+			// There are two possible cases: classes and methods.
+			if (e.getKind() == ElementKind.CLASS) {
+				addClassToContext((TypeElement) e);
+			} else if (e.getKind() == ElementKind.METHOD) {
+
+				// A generator method can be added only if the enclosing instance is added
+				// explicitly too.
+				Element enclosingElement = e.getEnclosingElement();
+				if (enclosingElement.getAnnotation(Component.class) == null) {
+					RevolverCompilationEnvironment.INSTANCE.printMessage(Kind.ERROR,
+							"@Component can only be on a method of a class annotated with @Component", e);
+				} else {
+					addMethodToContext((ExecutableElement) e, processingEnv.getTypeUtils());
+				}
+			}
+		}
+	}
+
+	protected void addClassToContext(TypeElement klass) {
+		ElementKind kind = klass.getKind();
+		Set<Modifier> modifiers = klass.getModifiers();
+
+		// Checks that we're dealing with a public, not abstract, class.
+		if (kind == ElementKind.ENUM || kind == ElementKind.INTERFACE || modifiers.contains(Modifier.ABSTRACT)
+				|| !modifiers.contains(Modifier.PUBLIC)) {
+			RevolverCompilationEnvironment.INSTANCE.printMessage(Kind.ERROR,
+					"@Component can only be placed on a public, not abstract, class. Check the following type: ["
+							+ klass + "]");
+		} else {
+			RevolverCompilationEnvironment.INSTANCE.getRegistry().addManagedClass(klass);
+		}
+	}
+
+	private void addMethodToContext(ExecutableElement e, Types typeUtils) {
+		// Generator methods must be public, static and must not return void.
+		if (e.getReturnType().getKind() == TypeKind.VOID || !e.getModifiers().contains(Modifier.PUBLIC)) {
+			RevolverCompilationEnvironment.INSTANCE.printMessage(Kind.ERROR,
+					"@Component methods must be public and must not return void. Check method [" + e + "] in type ["
+							+ e.getEnclosingElement() + "].");
+		} else {
+			Element returnElement = typeUtils.asElement(e.getReturnType());
+			RevolverCompilationEnvironment.INSTANCE.getRegistry().addManagedMethod(e, returnElement);
+		}
 	}
 
 }

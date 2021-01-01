@@ -1,4 +1,4 @@
-package co.aurasphere.revolver.registry;
+package co.aurasphere.revolver.model;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +10,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
-public class MethodInfo extends RevolverRegistryEntry {
+public class MethodRegistryEntry extends BaseRevolverRegistryEntry {
 
 	private TypeMirror returnTypeMirror;
 
@@ -18,11 +18,11 @@ public class MethodInfo extends RevolverRegistryEntry {
 
 	private List<? extends VariableElement> parameters;
 
-	private List<FieldInfo> parametersFieldInfo;
+	private List<FieldRegistryEntry> parametersFieldInfo;
 
 	private TypeElement parentClass;
 
-	private ClassInfo parentClassInfo;
+	private ClassRegistryEntry parentClassInfo;
 
 	private Element returnType;
 
@@ -30,7 +30,7 @@ public class MethodInfo extends RevolverRegistryEntry {
 	
 	private boolean singleton;
 	
-	public MethodInfo(ExecutableElement element, Element returnType) {
+	public MethodRegistryEntry(ExecutableElement element, Element returnType) {
 		// The super constructor is called with the return type because that's
 		// the element put under the context.
 		super(returnType);
@@ -40,12 +40,12 @@ public class MethodInfo extends RevolverRegistryEntry {
 		this.returnType = returnType;
 
 		this.parentClass = (TypeElement) element.getEnclosingElement();
-		this.parentClassInfo = new ClassInfo(parentClass);
+		this.parentClassInfo = new ClassRegistryEntry(parentClass);
 
 		this.parameters = element.getParameters();
-		this.parametersFieldInfo = new ArrayList<FieldInfo>();
+		this.parametersFieldInfo = new ArrayList<FieldRegistryEntry>();
 		for (VariableElement v : this.parameters) {
-			parametersFieldInfo.add(new FieldInfo(v, this.parentClass));
+			parametersFieldInfo.add(new FieldRegistryEntry(v, this.parentClass));
 		}
 		
 		this.methodName = element.getSimpleName().toString();
@@ -74,11 +74,11 @@ public class MethodInfo extends RevolverRegistryEntry {
 		return this.parentClass;
 	}
 
-	public ClassInfo getParentClassInfo() {
+	public ClassRegistryEntry getParentClassInfo() {
 		return this.parentClassInfo;
 	}
 
-	public List<FieldInfo> getParametersFieldInfo() {
+	public List<FieldRegistryEntry> getParametersFieldInfo() {
 		return this.parametersFieldInfo;
 	}
 
