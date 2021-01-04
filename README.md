@@ -9,6 +9,28 @@ A simple compile-time dependency injection framework. Revolver works with [stand
 ## Usage
 Before using this project in production, read the [known issues section](#known-issues).
 
+### Maven Configuration
+After building Revolver locally, you can add it to your project pom.xml like this:
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.6.1</version>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>co.aurasphere.revolver</groupId>
+                            <artifactId>revolver-compiler</artifactId>
+                            <version>1.0.1</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 ### Quickstart
 
 To register a component under Revolver context, you use the `javax.inject.Singleton` annotation:
@@ -31,7 +53,7 @@ Component injection is performed by using the `javax.inject.Inject` annotation a
         }
     }
 
-The Revolver class is auto-generated during compilation, so you need to run a build (which will fail the first time for this reason) before you can use it. And that's it!
+The Revolver class is auto-generated during compilation, so you need to run a build (which will fail the first time for this reason) before you can use it. If using Maven, the generated files will be found under `target/generated-sources/annotations`, so you may want to add that directory to your IDE source configuration to simplify your setup. And that's it!
 
 ### Injection Types
 Revolver supports 3 types of injection: field injection, setter injection and constructor injection.
