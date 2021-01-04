@@ -11,14 +11,14 @@ Before using this project in production, read the [known issues section](#known-
 
 ### Quickstart
 
-To register a component under Revolver context, you use the javax.inject.Singleton annotation:
+To register a component under Revolver context, you use the `javax.inject.Singleton` annotation:
 
     @Singleton
     public class MyComponent {
         ...
     }
     
-Component injection is performed by using the javax.inject.Inject annotation and invoking the Revolver.inject method by passing the object to inject (usually done in the constructor):
+Component injection is performed by using the `javax.inject.Inject` annotation and invoking the `Revolver.inject` method by passing the object to inject (usually done in the constructor):
 
 
     public class MyMainClass {
@@ -37,7 +37,7 @@ The Revolver class is auto-generated during compilation, so you need to run a bu
 Revolver supports 3 types of injection: field injection, setter injection and constructor injection.
 
 #### Field injection
-To perform field injection, simply add @Inject to the field you want to inject:
+To perform field injection, simply add `@Inject` to the field you want to inject:
 
     public class MyClass {
            
@@ -97,7 +97,7 @@ Constructor injection will be performed if any registered component specifies ar
    
     }
 
-If your component has more than one constructor, you can choose which one will be called by annotating it with @Inject:
+If your component has more than one constructor, you can choose which one will be called by annotating it with `@Inject`:
 
     @Singleton
     public class MyComponentTwo {
@@ -114,7 +114,7 @@ If your component has more than one constructor, you can choose which one will b
     }
 
 ### Collection injection
-If you have multiple components implementing/extending one common superclass, you can inject all of them inside a collection(List, Set, Map, Queue) or an array:
+If you have multiple components implementing/extending one common superclass, you can inject all of them inside a `Collection`(`List`, `Set`, `Map`, `Queue`) or an `Array`:
 
     public class MyClass {
            
@@ -128,7 +128,7 @@ If you have multiple components implementing/extending one common superclass, yo
     }
 
 ### Programmatic Components
-Sometimes, you need to register components from classes that are not under your control (for example, 3rd-party libraries). In this case, you can create a method that returns the component and annotate both the class and the method with @Singleton.
+Sometimes, you need to register components from classes that are not under your control (for example, 3rd-party libraries). In this case, you can create a method that returns the component and annotate both the class and the method with `@Singleton`.
 The method can have as many arguments as you want, and they will be automatically injected:
 
     @Singleton
@@ -141,9 +141,9 @@ The method can have as many arguments as you want, and they will be automaticall
         }
     }
 
-Notice that like all other components managed by Revolver, anything produced by your method will be a Singleton, meaning that only one instance is produced. In this example, each time you require a Retrofit component for injection, the same component will be injected. The defined method will be thus called only once.
+Notice that like all other components managed by Revolver, anything produced by your method will be a `Singleton`, meaning that only one instance is produced. In this example, each time you require a `Retrofit` component for injection, the same component will be injected. The defined method will be thus called only once.
 
-When you start creating components this way, it's easy to generate ambiguities in types. In this case, you give the produced component an identifier using the javax.inject.Named annotation:
+When you start creating components this way, it's easy to generate ambiguities in types. In this case, you give the produced component an identifier using the `javax.inject.Named` annotation:
 
     @Singleton
     public class MyComponentProvider {
@@ -177,7 +177,7 @@ When you start creating components this way, it's easy to generate ambiguities i
 Since this project was mostly an experiment, it's adviced not to use it in any serious application. Known issues are the following:
  - Insufficient test coverage (tested only with Maven)
  - Impossibility to override components. When testing, you can mock the static inject method with a 3rd party library like Mockito
- - Components produced during the compile phase cannot be injected inside components produced during the testCompile phase, making unit testing extremely difficult
+ - Components produced during the `compile` phase cannot be injected inside components produced during the `testCompile` phase, making unit testing extremely difficult
  
 ## Contributions
 If you want to contribute on this project, just fork this repo and submit a pull request with your changes. Improvements are always appreciated! I'm also looking for mainteners that want to continue improving this concept.
