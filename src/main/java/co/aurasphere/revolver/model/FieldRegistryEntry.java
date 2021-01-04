@@ -2,95 +2,79 @@ package co.aurasphere.revolver.model;
 
 import java.util.List;
 
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 
 import org.apache.commons.lang.StringUtils;
 
-public class FieldRegistryEntry extends BaseRevolverRegistryEntry {
+import co.aurasphere.revolver.RevolverCompilationEnvironment;
 
-	private TypeElement parentClass;
-
-	private VariableElement variableElement;
+public class FieldRegistryEntry extends BaseRevolverRegistryEntry<VariableElement> {
 
 	private CollectionType collectionType;
-
-	private TypeMirror collectionElementTypeMirror;
-
-	public FieldRegistryEntry(VariableElement variableElement, TypeElement parentClass) {
+	
+	public FieldRegistryEntry(VariableElement variableElement) {
 		super(variableElement);
-		this.variableElement = variableElement;
-		this.parentClass = parentClass;
-		this.collectionType = CollectionType.SINGLE;
-
-		// Sets the element type mirror if this is a collection or an array.
-		if (this.typeMirror instanceof ArrayType) {
-			this.collectionElementTypeMirror = ((ArrayType) this.typeMirror)
-					.getComponentType();
-		} else if (this.typeMirror instanceof DeclaredType) {
-			List<? extends TypeMirror> typeArguments = ((DeclaredType) this.typeMirror)
-					.getTypeArguments();
-			if (!typeArguments.isEmpty()) {
-				this.collectionElementTypeMirror = typeArguments.get(0);
-			}
+		
+		Types typeUtils = RevolverCompilationEnvironment.INSTANCE.getTypeUtils();
+		Elements elementUtils = RevolverCompilationEnvironment.INSTANCE.getElementUtils();
+		// Checks the erasure to leverage generic parameterized collections.
+		TypeMirror erasure = typeUtils.erasure(this.getTypeMirror());
+		if (this.getTypeMirror().getKind().equals(TypeKind.ARRAY)) {
+			this.collectionType = CollectionType.ARRAY;
+		} else if (typeUtils.isAssignable(erasure, elementUtils.getTypeElement("java.util.Set").asType())) {
+			this.collectionType = CollectionType.SET;
+		} else if (typeUtils.isAssignable(erasure, elementUtils.getTypeElement("java.util.List").asType())) {
+			this.collectionType = CollectionType.LIST;
+		} else if (typeUtils.isAssignable(erasure, elementUtils.getTypeElement("java.util.Queue").asType())) {
+			this.collectionType = CollectionType.QUEUE;
+		} else {
+			this.collectionType = CollectionType.SINGLE;
 		}
-	}
-
-	public FieldRegistryEntry(VariableElement e) {
-		this(e, (TypeElement) e.getEnclosingElement());
-	}
-
-	public TypeElement getParentClass() {
-		return this.parentClass;
 	}
 
 	@Override
 	public VariableElement getType() {
-		return this.variableElement;
+		return this.element;
 	}
 
 	public boolean isPublic() {
-		return variableElement.getModifiers().contains(
-				Modifier.PUBLIC);
+		return this.element.getModifiers().contains(Modifier.PUBLIC);
+	}
+
+	public boolean isPrimitive() {
+		return this.element.asType().getKind().isPrimitive();
 	}
 
 	public String setterName() {
-		return "set"
-				+ StringUtils.capitalize(this.variableElement
-						.toString());
-	}
-
-	public String qualifiedName() {
-		return this.parentClass.toString() + "." + variableElement.toString();
-	}
-
-	public String setterSignature() {
-		return "public " + setterName() + "("
-				+ variableElement.asType().toString() + ")";
+		return "set" + StringUtils.capitalize(this.element.toString());
 	}
 
 	public TypeMirror getCollectionElementTypeMirror() {
-		return this.collectionElementTypeMirror;
+		if (this.getTypeMirror() instanceof ArrayType) {
+			return ((ArrayType) this.getTypeMirror()).getComponentType();
+		} else if (this.getTypeMirror() instanceof DeclaredType) {
+			List<? extends TypeMirror> typeArguments = ((DeclaredType) this.getTypeMirror()).getTypeArguments();
+			if (!typeArguments.isEmpty()) {
+				return typeArguments.get(0);
+			}
+		}
+		return null;
 	}
 
-	public CollectionType getCollectionType() {
-		return collectionType;
-	}
-
-	public void setCollectionType(CollectionType collectionType) {
-		this.collectionType = collectionType;
-	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((collectionElementTypeMirror == null) ? 0 : collectionElementTypeMirror.hashCode());
-		result = prime * result + ((variableElement == null) ? 0 : variableElement.hashCode());
+		result = prime * result + ((element == null) ? 0 : element.hashCode());
 		return result;
 	}
 
@@ -103,17 +87,21 @@ public class FieldRegistryEntry extends BaseRevolverRegistryEntry {
 		if (getClass() != obj.getClass())
 			return false;
 		FieldRegistryEntry other = (FieldRegistryEntry) obj;
-		if (collectionElementTypeMirror == null) {
-			if (other.collectionElementTypeMirror != null)
+		if (element == null) {
+			if (other.element != null)
 				return false;
-		} else if (!collectionElementTypeMirror.equals(other.collectionElementTypeMirror))
-			return false;
-		if (variableElement == null) {
-			if (other.variableElement != null)
-				return false;
-		} else if (!variableElement.equals(other.variableElement))
+		} else if (!element.equals(other.element))
 			return false;
 		return true;
+	}
+
+	@Override
+	public ExecutableElement getCreatorExecutableElement() {
+		return null;
+	}
+
+	public CollectionType getCollectionType() {
+		return collectionType;
 	}
 
 }

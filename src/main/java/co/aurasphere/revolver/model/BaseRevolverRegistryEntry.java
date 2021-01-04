@@ -1,32 +1,36 @@
 package co.aurasphere.revolver.model;
 
-import java.lang.annotation.Annotation;
-
 import javax.inject.Named;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic.Kind;
 
 import org.apache.commons.lang.StringUtils;
 
 import co.aurasphere.revolver.RevolverCompilationEnvironment;
 
-public abstract class BaseRevolverRegistryEntry {
+public abstract class BaseRevolverRegistryEntry<T extends Element> {
 
 	protected String name;
 
-	protected boolean named;
-
-	protected Element element;
+	// Actual element under context. For methods, it's the return type.
+	protected T element;
 
 	protected TypeMirror typeMirror;
 
-	public BaseRevolverRegistryEntry(Element element) {
-		this.named = isAnnotatedWith(element, Named.class);
+	public BaseRevolverRegistryEntry(T element) {
 		this.element = element;
 		this.name = element == null ? null : getElementName(element);
 		this.typeMirror = element == null ? null : element.asType();
+
+		// This happens if the type is a primitive, which is not supported. In this case
+		// you can use the Object counterpart (e.g. int -> Integer)
+		if (this.element != null && this.typeMirror == null) {
+			RevolverCompilationEnvironment.INSTANCE.printMessage(Kind.ERROR,
+					"Primitive types component are not supported. Use the wrapper counterpart (e.g. int -> Integer)",
+					element);
+		}
 	}
 
 	private String getElementName(Element e) {
@@ -48,10 +52,6 @@ public abstract class BaseRevolverRegistryEntry {
 		}
 	}
 
-	protected boolean isAnnotatedWith(Element element, Class<? extends Annotation> annotation) {
-		return element != null && element.getAnnotation(annotation) != null;
-	}
-
 	public String getName() {
 		return this.name;
 	}
@@ -61,21 +61,19 @@ public abstract class BaseRevolverRegistryEntry {
 	}
 
 	public boolean isNamed() {
-		return this.named;
+		return this.element != null && this.element.getAnnotation(Named.class) != null;
 	}
 
 	public abstract Element getType();
 
-	public Element getElement() {
+	public T getElement() {
 		return element;
 	}
 
 	public TypeMirror getTypeMirror() {
 		return typeMirror;
 	}
-
-	protected TypeElement variableElementToTypeElement(VariableElement element) {
-		return (TypeElement) RevolverCompilationEnvironment.INSTANCE.getTypeUtils().asElement(element.asType());
-	}
+	
+	public abstract ExecutableElement getCreatorExecutableElement();
 
 }

@@ -1,6 +1,5 @@
 package co.aurasphere.revolver;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -11,8 +10,11 @@ import java.util.stream.Stream;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.ElementFilter;
+import javax.tools.Diagnostic.Kind;
 
 import co.aurasphere.revolver.model.BaseRevolverRegistryEntry;
 import co.aurasphere.revolver.model.ClassRegistryEntry;
@@ -22,63 +24,50 @@ import co.aurasphere.revolver.model.MethodRegistryEntry;
 
 public class RevolverRegistry {
 
-	// Fields needed for injection and used for validation. TODO: shouldn't be
-	// classes?
-	private List<FieldRegistryEntry> requiredFields = new ArrayList<FieldRegistryEntry>();
-
-	// Maps with getterName, returnType.
 	private HashMap<ClassRegistryEntry, List<FieldRegistryEntry>> injectionMap = new HashMap<ClassRegistryEntry, List<FieldRegistryEntry>>();
-	private HashMap<String, ClassRegistryEntry> managedClasses = new HashMap<String, ClassRegistryEntry>();
+	private List<ClassRegistryEntry> managedClasses = new ArrayList<ClassRegistryEntry>();
 	private List<MethodRegistryEntry> managedMethods = new ArrayList<MethodRegistryEntry>();
 
 	public void addManagedClass(TypeElement managedClass) {
-		ClassRegistryEntry info = new ClassRegistryEntry(managedClass);
-		this.managedClasses.put(info.getterMethodName(), info);
-
-		// Registers the constructor arguments as required for validation.
-		for (FieldRegistryEntry f : info.getConstructorParameters()) {
-			addRequiredField(f);
-		}
+		this.managedClasses.add(new ClassRegistryEntry(managedClass));
 	}
 
-	public void addFieldToInject(VariableElement fieldToInject, CollectionType collectionType) {
+	public void addFieldToInject(VariableElement fieldToInject) {
 		FieldRegistryEntry fieldInfo = new FieldRegistryEntry(fieldToInject);
 		ClassRegistryEntry parentClass = new ClassRegistryEntry((TypeElement) fieldToInject.getEnclosingElement());
 
+		// Checks that a setter exists if the field is not public.
+		if (!fieldInfo.isPublic()) {
+			// Looks for a public setter with exactly one argument of type to
+			// set and java bean convention name (e.g. String name -> public
+			// setName(String))
+			boolean validSetterExists = ElementFilter.methodsIn(parentClass.getType().getEnclosedElements())
+					.parallelStream()
+					.anyMatch(m -> m.getSimpleName().toString().equals(fieldInfo.setterName())
+							&& m.getModifiers().contains(Modifier.PUBLIC) && m.getParameters().size() == 1
+							&& RevolverCompilationEnvironment.INSTANCE.getTypeUtils()
+									.isAssignable(m.getParameters().get(0).asType(), fieldInfo.getTypeMirror()));
+			if (!validSetterExists) {
+				// If I haven't found the setter I throw an error.
+				RevolverCompilationEnvironment.INSTANCE
+						.printMessage(
+								Kind.ERROR, "No setter found for field. Expected signature: [public "
+										+ fieldInfo.setterName() + "(" + fieldInfo.getType().asType() + ")]",
+								fieldInfo.getElement());
+			}
+		}
+
+		// Adds the field to the injection map.
 		List<FieldRegistryEntry> fieldsList = this.injectionMap.get(parentClass);
 		if (fieldsList == null) {
 			fieldsList = new ArrayList<FieldRegistryEntry>();
 			this.injectionMap.put(parentClass, fieldsList);
 		}
 		fieldsList.add(fieldInfo);
-		fieldInfo.setCollectionType(collectionType);
-
-		// Requires the field for validation if it's not a collection.
-		if (collectionType == CollectionType.SINGLE) {
-			addRequiredField(fieldInfo);
-		}
 	}
 
-	public void addRequiredField(FieldRegistryEntry field) {
-		this.requiredFields.add(field);
-	}
-
-	/**
-	 * Adds a generator method under Revolver context. The method is registered by
-	 * adding the return type to the managed elements list. The method arguments are
-	 * added to the required field list in order to validate them later.
-	 * 
-	 * @param element    the method to add.
-	 * @param returnType the element returned by the method.
-	 */
 	public void addManagedMethod(ExecutableElement element, Element returnType) {
-		MethodRegistryEntry methodInfo = new MethodRegistryEntry(element, returnType);
-		this.managedMethods.add(methodInfo);
-
-		// Registers the method arguments as required for validation.
-		for (FieldRegistryEntry f : methodInfo.getParametersFieldInfo()) {
-			addRequiredField(f);
-		}
+		this.managedMethods.add(new MethodRegistryEntry(element, returnType));
 	}
 
 	public List<MethodRegistryEntry> getManagedMethods() {
@@ -89,16 +78,14 @@ public class RevolverRegistry {
 		return injectionMap.keySet();
 	}
 
-	public Collection<BaseRevolverRegistryEntry> getManagedElementsList() {
-		return Stream.concat(this.managedClasses.values().stream(), this.managedMethods.stream())
+	public Collection<BaseRevolverRegistryEntry<?>> getManagedElementsList() {
+		return Stream.concat(this.managedClasses.parallelStream(), this.managedMethods.parallelStream())
 				.collect(Collectors.toList());
 	}
 
 	public List<FieldRegistryEntry> getDeduplicatedCollectionsToInject() {
-		return injectionMap.values().parallelStream().flatMap(l -> l.parallelStream())
-				.filter(e -> e.getCollectionType() != CollectionType.SINGLE)
-				.distinct()
-				.collect(Collectors.toList());
+		return injectionMap.values().parallelStream().flatMap(l -> l.stream())
+				.filter(e -> e.getCollectionType() != CollectionType.SINGLE).distinct().collect(Collectors.toList());
 	}
 
 	public HashMap<ClassRegistryEntry, List<FieldRegistryEntry>> getInjectionMap() {
@@ -106,11 +93,18 @@ public class RevolverRegistry {
 	}
 
 	public List<FieldRegistryEntry> getRequiredFields() {
-		return requiredFields;
+		Stream<FieldRegistryEntry> methodArgsToInject = this.managedMethods.stream()
+				.flatMap(m -> m.getParametersFieldInfo().stream());
+		Stream<FieldRegistryEntry> fieldsToInject = this.injectionMap.values().stream()
+				.flatMap(f -> f.stream());
+		Stream<FieldRegistryEntry> constructorArgsToInject = this.managedClasses.stream()
+				.flatMap(c -> c.getConstructorParameters().stream());
+		return Stream.concat(methodArgsToInject, Stream.concat(fieldsToInject, constructorArgsToInject))
+				.filter(f -> f.getCollectionType() == CollectionType.SINGLE).collect(Collectors.toList());
 	}
 
-	public Collection<ClassRegistryEntry> getManagedClasses() {
-		return managedClasses.values();
+	public List<ClassRegistryEntry> getManagedClasses() {
+		return managedClasses;
 	}
 
 }

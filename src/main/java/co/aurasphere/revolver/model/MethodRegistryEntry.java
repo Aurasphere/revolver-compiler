@@ -3,32 +3,19 @@ package co.aurasphere.revolver.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Singleton;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
-public class MethodRegistryEntry extends BaseRevolverRegistryEntry {
-
-	private TypeMirror returnTypeMirror;
+public class MethodRegistryEntry extends BaseRevolverRegistryEntry<Element> {
 
 	private ExecutableElement executableElement;
 
-	private List<? extends VariableElement> parameters;
-
 	private List<FieldRegistryEntry> parametersFieldInfo;
 
-	private TypeElement parentClass;
-
 	private ClassRegistryEntry parentClassInfo;
-
-	private Element returnType;
-
-	private String methodName;
-	
-	private boolean singleton;
 	
 	public MethodRegistryEntry(ExecutableElement element, Element returnType) {
 		// The super constructor is called with the return type because that's
@@ -36,21 +23,11 @@ public class MethodRegistryEntry extends BaseRevolverRegistryEntry {
 		super(returnType);
 
 		this.executableElement = element;
-		this.returnTypeMirror = element.getReturnType();
-		this.returnType = returnType;
-
-		this.parentClass = (TypeElement) element.getEnclosingElement();
-		this.parentClassInfo = new ClassRegistryEntry(parentClass);
-
-		this.parameters = element.getParameters();
+		this.parentClassInfo = new ClassRegistryEntry((TypeElement) element.getEnclosingElement());
 		this.parametersFieldInfo = new ArrayList<FieldRegistryEntry>();
-		for (VariableElement v : this.parameters) {
-			parametersFieldInfo.add(new FieldRegistryEntry(v, this.parentClass));
+		for (VariableElement v : element.getParameters()) {
+			parametersFieldInfo.add(new FieldRegistryEntry(v));
 		}
-		
-		this.methodName = element.getSimpleName().toString();
-		this.singleton = isAnnotatedWith(element, Singleton.class);
-
 	}
 
 	@Override
@@ -58,20 +35,8 @@ public class MethodRegistryEntry extends BaseRevolverRegistryEntry {
 		return this.executableElement;
 	}
 
-	public Element getReturnType() {
-		return this.returnType;
-	}
-
 	public ExecutableElement getExecutableElement() {
 		return this.executableElement;
-	}
-
-	public List<? extends VariableElement> getParameters() {
-		return this.parameters;
-	}
-
-	public TypeElement getParentClass() {
-		return this.parentClass;
 	}
 
 	public ClassRegistryEntry getParentClassInfo() {
@@ -83,15 +48,16 @@ public class MethodRegistryEntry extends BaseRevolverRegistryEntry {
 	}
 
 	public TypeMirror getReturnTypeMirror() {
-		return this.returnTypeMirror;
+		return this.executableElement.getReturnType();
 	}
 
 	public String getMethodName() {
-		return this.methodName;
+		return this.executableElement.getSimpleName().toString();
 	}
 
-	public boolean isSingleton() {
-		return singleton;
+	@Override
+	public ExecutableElement getCreatorExecutableElement() {
+		return this.executableElement;
 	}
 
 }
