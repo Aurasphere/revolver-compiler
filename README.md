@@ -7,6 +7,7 @@
 A simple compile-time dependency injection framework. Revolver works with [standard javax.inject annotations](https://docs.oracle.com/javaee/7/api/javax/inject/package-summary.html).
 
 ## Usage
+Before using this project in production, read the [known issues section](#known-issues).
 
 ### Quickstart
 
@@ -28,7 +29,6 @@ Component injection is performed by using the javax.inject.Inject annotation and
         public MyMainClass() {
             Revolver.inject(this);
         }
-   
     }
 
 The Revolver class is auto-generated during compilation, so you need to run a build (which will fail the first time for this reason) before you can use it. And that's it!
@@ -39,42 +39,39 @@ Revolver supports 3 types of injection: field injection, setter injection and co
 #### Field injection
 To perform field injection, simply add @Inject to the field you want to inject:
 
-       public class MyClass {
+    public class MyClass {
            
-           @Inject
-           public MyComponent injectedComponent;
+        @Inject
+        public MyComponent injectedComponent;
            
-           public MyClass() {
-               Revolver.inject(this);
-           }
-       
-       }
+        public MyClass() {
+            Revolver.inject(this);
+        }
+    }
 
 #### Setter injection
 Setter injection will be automatically performed if the annotated field is not private. In this case, Revolver will look for a public setter named following the standard JavaBeans convention with only one argument of the same type of the field:
 
-       public class MyClass {
+    public class MyClass {
            
-           @Inject
-           private MyComponent injectedComponent;
+        @Inject
+        private MyComponent injectedComponent;
            
-           public MyClass() {
-               Revolver.inject(this);
-           }
+        public MyClass() {
+            Revolver.inject(this);
+        }
            
-           // This method will be called.
-           public void setInjectedComponent(MyComponent injectedComponent) {
-               this.injectedComponent = injectedComponent;
-           }
-       
-       }
+        // This method will be called.
+        public void setInjectedComponent(MyComponent injectedComponent) {
+            this.injectedComponent = injectedComponent;
+        }   
+    }
 
 #### Constructor injection
 Constructor injection will be performed if any registered component specifies arguments in its constructor:
 
     @Singleton
     public class MyComponentOne {
-  
     }
     
     @Singleton
@@ -113,6 +110,20 @@ If your component has more than one constructor, you can choose which one will b
         @Inject
         public MyComponentTwo(MyComponentOne myComponentOne) {
             this.myComponentOne = myComponentOne;
+        }
+    }
+
+### Collection injection
+If you have multiple components implementing/extending one common superclass, you can inject all of them inside a collection(List, Set, Map, Queue) or an array:
+
+    public class MyClass {
+           
+        // Will contain all the registered components that implements Runnable.
+        @Inject
+        public List<Runnable> tasksToExecute;
+           
+        public MyClass() {
+            Revolver.inject(this);
         }
     }
 
@@ -162,6 +173,22 @@ When you start creating components this way, it's easy to generate ambiguities i
         }
     }
 
+## Known Issues
+Since this project was mostly an experiment, it's adviced not to use it in any serious application. Known issues are the following:
+ - Insufficient test coverage (tested only with Maven)
+ - Impossibility to override components. When testing, you can mock the static inject method with a 3rd party library like Mockito
+ - Components produced during the compile phase cannot be injected inside components produced during the testCompile phase, making unit testing extremely difficult
+ 
+## Contributions
+If you want to contribute on this project, just fork this repo and submit a pull request with your changes. Improvements are always appreciated! I'm also looking for mainteners that want to continue improving this concept.
 
+## Project status
+This project is considered completed and won't be developed further unless I get any specific requests (which I may consider).
 
+## Contacts
+You can contact me using my account e-mail or opening an issue on this repo. I'll try to reply back ASAP.
 
+## License and purpose of the project
+The project is released under the MIT license, which lets you reuse the code for any purpose you want (even commercial) with the only requirement being copying this <a href="LICENSE">project license</a> on your project.
+
+<sub>Copyright (c) 2016-2021 Donato Rimenti</sub>
