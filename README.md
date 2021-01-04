@@ -33,10 +33,10 @@ Component injection is performed by using the `javax.inject.Inject` annotation a
 
 The Revolver class is auto-generated during compilation, so you need to run a build (which will fail the first time for this reason) before you can use it. And that's it!
 
-### Injection types
+### Injection Types
 Revolver supports 3 types of injection: field injection, setter injection and constructor injection.
 
-#### Field injection
+#### Field Injection
 To perform field injection, simply add `@Inject` to the field you want to inject:
 
     public class MyClass {
@@ -49,7 +49,7 @@ To perform field injection, simply add `@Inject` to the field you want to inject
         }
     }
 
-#### Setter injection
+#### Setter Injection
 Setter injection will be automatically performed if the annotated field is not private. In this case, Revolver will look for a public setter named following the standard JavaBeans convention with only one argument of the same type of the field:
 
     public class MyClass {
@@ -67,7 +67,7 @@ Setter injection will be automatically performed if the annotated field is not p
         }   
     }
 
-#### Constructor injection
+#### Constructor Injection
 Constructor injection will be performed if any registered component specifies arguments in its constructor:
 
     @Singleton
@@ -113,7 +113,7 @@ If your component has more than one constructor, you can choose which one will b
         }
     }
 
-### Collection injection
+### Collection Injection
 If you have multiple components implementing/extending one common superclass, you can inject all of them inside a `Collection`(`List`, `Set`, `Map`, `Queue`) or an `Array`:
 
     public class MyClass {
@@ -178,6 +178,7 @@ Since this project was mostly an experiment, it's adviced not to use it in any s
  - Insufficient test coverage (tested only with Maven)
  - Impossibility to override components. When testing, you can mock the static inject method with a 3rd party library like Mockito
  - Components produced during the `compile` phase cannot be injected inside components produced during the `testCompile` phase, making unit testing extremely difficult
+ - Not available on Maven Central, so you will have to build the project locally
  
 ## Contributions
 If you want to contribute on this project, just fork this repo and submit a pull request with your changes. Improvements are always appreciated! I'm also looking for mainteners that want to continue improving this concept.
